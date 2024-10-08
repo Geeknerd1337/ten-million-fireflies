@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 77d89d5a2aee6e047a56ef6aba9a378f
+guid: e38065681940d7042be16bf8f2ad1f60
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -1622524721689181744
-    second: firefly_0
+      213: -1240213989401918003
+    second: firefly_alt_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: firefly_0
+      name: firefly_alt_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0d14d64bc52ab79e0800000000000000
-      internalID: -1622524721689181744
+      spriteID: dc58a3492ffd9cee0800000000000000
+      internalID: -1240213989401918003
       vertices: []
       indices: 
       edges: []
@@ -160,8 +160,7 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable:
-      firefly_0: -1622524721689181744
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

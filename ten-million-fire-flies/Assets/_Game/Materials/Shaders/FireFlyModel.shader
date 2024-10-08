@@ -2,9 +2,12 @@ Shader "Joshomaton/FireFlyModel"
 {
     Properties
     {
+		[HDR]
         _FarColor("Far color", Color) = (.2, .2, .2, 1)
         _MainTex("Main Texture", 2D) = "white" {} // Define the texture property
-        _NearColor("Near color", Color) = (.2, .2, .2, 1)
+    _Emission("Emission Texture", 2D) = "black" {} // Define the texture property
+    [HDR]
+    _NearColor("Near color", Color) = (.2, .2, .2, 1)
 
     }
         SubShader
@@ -13,14 +16,11 @@ Shader "Joshomaton/FireFlyModel"
         {
             Tags
             {
-                "RenderType" = "Transparent"
-                "Queue" = "Transparent" // Set render queue to Transparent
+                "RenderType" = "Opaque"
+                "Queue" = "Opaque" // Set render queue to Transparent
                 "RenderPipeline" = "UniversalRenderPipeline"
             }
 
-            // Enable blending for transparency
-            Blend OneMinusDstColor One
-            ZWrite Off
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -34,6 +34,7 @@ Shader "Joshomaton/FireFlyModel"
 		    float4 _NearColor;
             float4 _CameraPosition;  // Adding the camera position
             float4x4 _Rotation;
+            float _SyncedTime;
 
             StructuredBuffer<float4> nearest_firefly_buffer;
             StructuredBuffer<float4> position_buffer_2;
@@ -42,6 +43,8 @@ Shader "Joshomaton/FireFlyModel"
             // Declare texture and sampler
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
+			TEXTURE2D(_Emission);
+			SAMPLER(sampler_Emission);
 
   
 
@@ -63,18 +66,26 @@ Shader "Joshomaton/FireFlyModel"
 
             float3x3 CreateLookAtMatrix(float3 objectPos, float3 targetPos)
             {
-                // Forward vector (from object to camera)
-                float3 forward = normalize(targetPos - objectPos);
+                // Forward vector (from object to target), constrained to XZ plane
+                float3 forward = normalize(float3(targetPos.x - objectPos.x, 0, targetPos.z - objectPos.z));
 
                 // Right vector (cross product of up and forward)
-                float3 up = float3(0, 1, 0);  // Assuming Y is up
+                float3 up = float3(0, 1, 0);  // Y is up
                 float3 right = normalize(cross(up, forward));
 
-                // Recalculate the up vector using the right and forward vectors
-                up = cross(forward, right);
+                // Apply a 90-degree rotation around the Y-axis to the forward vector
+                float angle = radians(-90.0);
+                float3 rotatedForward = float3(
+                    forward.x * cos(angle) - forward.z * sin(angle),
+                    0,
+                    forward.x * sin(angle) + forward.z * cos(angle)
+                    );
 
-                // Construct a rotation matrix from right, up, and forward
-                return float3x3(right, up, forward);
+                // Recalculate right vector after the rotation
+                right = normalize(cross(up, rotatedForward));
+
+                // Construct the rotation matrix from the rotated forward, right, and up vectors
+                return float3x3(right, up, rotatedForward);
             }
 
             float hash(float n) {
@@ -108,20 +119,31 @@ Shader "Joshomaton/FireFlyModel"
   
 				
                 float4 start = nearest_firefly_buffer[instance_id];
-                const float3 color = lerp(_NearColor, _FarColor, noise((start.x + start.y + start.z) % 1));
+                float3 color = lerp(_NearColor, _FarColor, noise((start.x + start.y + start.z) % 1));
+          
+				
 			
                 
-                float time = sin((_Time.y + ((start.x + start.y + start.z) % 100)) * 0.1);
+                float time = sin((_SyncedTime + ((start.x + start.y + start.z) % 100)) * 0.1);
       
-                
+                float noiseScalar = 10;
 				//Different noise value on each axis
 				float noiseValueX = noise(time + start.x % 1);
 				float noiseValueY = noise(time + start.y % 1);
 				float noiseValueZ = noise(time + start.z % 1);
-                float3 noise = float3(noiseValueX, noiseValueY, noiseValueZ) * 1;
-                float3x3 lookAtMatrix = CreateLookAtMatrix(start.xyz, start.xyz + noise);
+                float3 noise_now = float3(noiseValueX, noiseValueY, noiseValueZ) * noiseScalar;
+
+                float time_future = sin(((_Time.y + 0.01) + ((start.x + start.y + start.z) % 100)) * 0.1);
+				//Noise future
+				float noiseValueX_future = noise(time_future + start.x % 1);
+				float noiseValueY_future = noise(time_future + start.y % 1);
+                float noiseValueZ_future = noise(time_future + start.z % 1);
+				float3 noise_future = float3(noiseValueX_future, noiseValueY_future, noiseValueZ_future) * noiseScalar;
+			    
+                float3x3 lookAtMatrix = CreateLookAtMatrix(start.xyz + noise_now.xyz, start.xyz + noise_future.xyz);
+                
 				//Add noise to the position
-				start.xyz += noise;
+				start.xyz += noise_now.xyz;
                 
                 
                 
@@ -144,9 +166,10 @@ Shader "Joshomaton/FireFlyModel"
                 // Sample texture using UV coordinates
                 half4 texColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 const float3 lighting = i.diffuse * 1.7;
+				half4 emission = SAMPLE_TEXTURE2D(_Emission, sampler_Emission, i.uv);
 
                 // Mix texture color with lighting
-                return half4(texColor.rgb * i.color ,texColor.r);
+                return half4(lerp(texColor.rgb, i.color.rgb, emission.r),texColor.r);
             }
             ENDHLSL
         }

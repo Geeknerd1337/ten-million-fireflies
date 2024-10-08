@@ -61,6 +61,7 @@ public class FireFlyManager : MonoBehaviour
 	{
 		Vector3 camPos = Camera.main.transform.position;
 		Shader.SetGlobalVector("_CameraPosition", camPos);
+		Shader.SetGlobalFloat("_SyncedTime", Time.time);
 
 		_timer++;
 
