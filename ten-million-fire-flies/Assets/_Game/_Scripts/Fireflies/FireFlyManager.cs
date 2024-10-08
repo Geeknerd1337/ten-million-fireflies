@@ -17,9 +17,7 @@ public class FireFlyManager : MonoBehaviour
 
 	public Action OnBufferUpdate;
 
-	private OctreeNode<Vector3> fireflyOctree;
-	public Vector3 OctreeBoundsCenter = Vector3.zero;
-	public float OctreeBoundsSize = 200f;
+
 
 	private List<FireFlyEffect> _fireFlyEffects { get; set; }
 
@@ -29,12 +27,17 @@ public class FireFlyManager : MonoBehaviour
 	public float NoisePositionScale = 1f;
 	public AnimationCurve DistributionCurve = AnimationCurve.Linear(0, 0, 1, 1);
 
+	private RTree fireflyRTree;
+
+	// Example bounds for the RTree covering the world space
+	private BoundingBox worldBounds = new BoundingBox(new Vector3(-4500, -4500, -4500), new Vector3(4500, 4500, 4500));
+
 	public void Awake()
 	{
 		Instance = this;
 		_fireFlyEffects = new List<FireFlyEffect>();
 		_fireFlyEffects.AddRange(FindObjectsByType<FireFlyEffect>(FindObjectsSortMode.InstanceID));
-		fireflyOctree = new OctreeNode<Vector3>(new Bounds(OctreeBoundsCenter, Vector3.one * OctreeBoundsSize), 0);
+		fireflyRTree = new RTree(worldBounds);
 
 		//Call OnBufferUpdate when the buffer is updated
 		OnBufferUpdate += () =>
@@ -90,27 +93,13 @@ public class FireFlyManager : MonoBehaviour
 		return perlinoffset;
 	}
 
-	public Vector4[] GetPositionsWithinRadius(Vector3 center, float radius)
-	{
-		List<Vector3> result = new List<Vector3>();
-		fireflyOctree.Retrieve(result, center, radius);
-
-
-
-		Vector4[] vector4Result = new Vector4[result.Count];
-		for (int i = 0; i < result.Count; i++)
-		{
-			vector4Result[i] = new Vector4(result[i].x, result[i].y, result[i].z, 0); // The 4th value (w) is set to 0 as it doesn't matter
-		}
-		return vector4Result;
-	}
 
 	// Modified UpdateNearestBuffer to use the new Vector4 array
 	private void UpdateNearestBuffer()
 	{
 		Vector3 camPos = Camera.main.transform.position;
-		var nearestPositions = GetPositionsWithinRadius(camPos, 10f);
-		NearestCount = nearestPositions.Length;
+		var nearestPositions = GetFirefliesWithinRadius(camPos, 100f);
+		NearestCount = nearestPositions.Count;
 
 		if (NearestCount == 0)
 		{
@@ -118,9 +107,15 @@ public class FireFlyManager : MonoBehaviour
 		}
 
 		NearestFireFlyBuffer?.Release();
-		NearestFireFlyBuffer = new ComputeBuffer(NearestCount, 16); // Each Vector4 takes 16 bytes (4 * 4 bytes)
+		NearestFireFlyBuffer = new ComputeBuffer(NearestCount, 16);
 
-		NearestFireFlyBuffer.SetData(nearestPositions);
+		Vector4[] positions = new Vector4[NearestCount];
+		for (int i = 0; i < NearestCount; i++)
+		{
+			positions[i] = new Vector4(nearestPositions[i].x, nearestPositions[i].y, nearestPositions[i].z, 0);
+		}
+
+		NearestFireFlyBuffer.SetData(positions);
 		Shader.SetGlobalBuffer("nearest_firefly_buffer", NearestFireFlyBuffer);
 
 		OnBufferUpdate();
@@ -129,33 +124,36 @@ public class FireFlyManager : MonoBehaviour
 	private void UpdateBuffers()
 	{
 		Debug.Log("UPDATING BUFFERS");
-		// Positions
-		FireFlyPositionBuffer?.Release();
-		FireFlyPositionBuffer = new ComputeBuffer(Count, 16);
 
+		FireFlyPositionBuffer?.Release();
+		FireFlyPositionBuffer = new ComputeBuffer(Count, 16); // Assuming each Vector4 takes 16 bytes
 		var positions = new Vector4[Count];
 
-		fireflyOctree = new OctreeNode<Vector3>(new Bounds(OctreeBoundsCenter, Vector3.one * OctreeBoundsSize), 0);
-
-		// Grouping cubes into a bunch of spheres
-		var offset = Vector3.zero;
-		int cubeSize = Mathf.CeilToInt(Mathf.Pow(Count, 1f / 3f));
+		fireflyRTree = new RTree(worldBounds); // Reset or rebuild the R-Tree
 
 		for (var i = 0; i < Count; i++)
 		{
+			// Calculate position
 			Vector3 perlinoffset = CalculatePerlinoffset(Count);
 			Vector3 position = FireFlyUtils.RandomPointInSphereWithCurve(Count, Radius, DistributionCurve) + perlinoffset;
 
-			// Assign the calculated position to positions1 and positions2
-			positions[i] = position;
-			fireflyOctree.Insert(position, position);
+			// Store the position in the buffer
+			positions[i] = new Vector4(position.x, position.y, position.z, 0);
+
+			// Insert into R-Tree directly
+			fireflyRTree.Insert(position);
 		}
 
 		FireFlyPositionBuffer.SetData(positions);
 		Shader.SetGlobalBuffer("position_buffer_1", FireFlyPositionBuffer);
 
 		OnBufferUpdate();
+	}
 
+	public List<Vector3> GetFirefliesWithinRadius(Vector3 center, float radius)
+	{
+		BoundingBox queryBox = new BoundingBox(center - new Vector3(radius, radius, radius), center + new Vector3(radius, radius, radius));
+		return fireflyRTree.QueryRange(queryBox);
 	}
 
 }

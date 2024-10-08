@@ -120,7 +120,7 @@ Shader "Joshomaton/FireFlyModel"
 				float noiseValueZ = noise(time + start.z % 1);
 
 				//Add noise to the position
-				start.xyz += float3(noiseValueX, noiseValueY, noiseValueZ) * 10;
+				//start.xyz += float3(noiseValueX, noiseValueY, noiseValueZ) * 4;
                 
                 
                 

@@ -468,10 +468,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4e8d4ba7212fea43a7967c03e93a808, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Count: 10000000
+  Count: 10000
   NearestCount: 0
-  OctreeBoundsCenter: {x: 0, y: 0, z: 0}
-  OctreeBoundsSize: 200
+  GridSize: 50
   Radius: 4000
   NoiseSampleScale: 0.1
   NoisePositionScale: 1
