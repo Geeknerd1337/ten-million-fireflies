@@ -55,12 +55,20 @@ public class FireFlyManager : MonoBehaviour
 		UpdateBuffers();
 	}
 
+	private int _timer;
+
 	private void Update()
 	{
 		Vector3 camPos = Camera.main.transform.position;
 		Shader.SetGlobalVector("_CameraPosition", camPos);
 
-		UpdateNearestBuffer();
+		_timer++;
+
+
+		if (_timer % 5 == 0)
+		{
+			UpdateNearestBuffer();
+		}
 
 
 		if (Input.GetMouseButtonUp(0))
@@ -98,7 +106,7 @@ public class FireFlyManager : MonoBehaviour
 	private void UpdateNearestBuffer()
 	{
 		Vector3 camPos = Camera.main.transform.position;
-		var nearestPositions = GetFirefliesWithinRadius(camPos, 75f);
+		var nearestPositions = GetFirefliesWithinRadius(camPos, 100f);
 		NearestCount = nearestPositions.Count;
 
 		if (NearestCount == 0)

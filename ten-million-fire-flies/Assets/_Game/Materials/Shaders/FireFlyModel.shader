@@ -118,14 +118,15 @@ Shader "Joshomaton/FireFlyModel"
 				float noiseValueX = noise(time + start.x % 1);
 				float noiseValueY = noise(time + start.y % 1);
 				float noiseValueZ = noise(time + start.z % 1);
-
+                float3 noise = float3(noiseValueX, noiseValueY, noiseValueZ) * 1;
+                float3x3 lookAtMatrix = CreateLookAtMatrix(start.xyz, start.xyz + noise);
 				//Add noise to the position
-				//start.xyz += float3(noiseValueX, noiseValueY, noiseValueZ) * 4;
+				start.xyz += noise;
                 
                 
                 
 
-                float3x3 lookAtMatrix = CreateLookAtMatrix(start, _CameraPosition.xyz);
+                
 
                 float3 worldPosition = mul(v.vertex, lookAtMatrix) + start;
 
