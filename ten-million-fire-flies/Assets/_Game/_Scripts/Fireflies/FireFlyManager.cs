@@ -98,7 +98,7 @@ public class FireFlyManager : MonoBehaviour
 	private void UpdateNearestBuffer()
 	{
 		Vector3 camPos = Camera.main.transform.position;
-		var nearestPositions = GetFirefliesWithinRadius(camPos, 100f);
+		var nearestPositions = GetFirefliesWithinRadius(camPos, 75f);
 		NearestCount = nearestPositions.Count;
 
 		if (NearestCount == 0)
