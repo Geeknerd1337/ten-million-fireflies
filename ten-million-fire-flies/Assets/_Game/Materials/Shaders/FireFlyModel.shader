@@ -119,7 +119,7 @@ Shader "Joshomaton/FireFlyModel"
   
 				
                 float4 start = nearest_firefly_buffer[instance_id];
-                float3 color = lerp(_NearColor, _FarColor, noise((start.x + start.y + start.z) % 1));
+                float3 color = lerp(_NearColor, _FarColor, noise(instance_id % 1));
           
 				
 			

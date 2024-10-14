@@ -4,7 +4,7 @@ public class FireFlyModels : FireFlyEffect
 {
 	public override void OnBufferUpdate()
 	{
-		Debug.Log("FireFlyModels.OnBufferUpdate");
+
 		Args[0] = _instanceMesh.GetIndexCount(0);
 		Args[1] = (uint)FireFlyManager.Instance.NearestCount;
 		Args[2] = _instanceMesh.GetIndexStart(0);

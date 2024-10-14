@@ -132,7 +132,7 @@ Shader "Joshomaton/FireflyBillboard"
                 float distance = distance_squared(start, _CameraPosition);
 
 				
-                float3 color = lerp(_NearColor, _FarColor, noise(((start.x + start.y + start.z) * 0.01) % 1));
+                float3 color = lerp(_NearColor, _FarColor, noise(((instance_id) * 0.01) % 1));
 				color = lerp(color, float3(0, 0, 0), 1 - saturate((distance - 200) / 1000));
                 
 

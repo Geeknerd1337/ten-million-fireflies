@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using Unity.Entities.UniversalDelegates;
+using System.Threading;
+using System.Threading.Tasks;
 
 public class FireFlyManager : MonoBehaviour
 {
@@ -11,14 +15,7 @@ public class FireFlyManager : MonoBehaviour
 
 	public int Count = 10000;
 	public int NearestCount;
-
-
-
-
 	public Action OnBufferUpdate;
-
-
-
 	private List<FireFlyEffect> _fireFlyEffects { get; set; }
 
 	[Header("Position Distribution Values")]
@@ -66,7 +63,7 @@ public class FireFlyManager : MonoBehaviour
 		_timer++;
 
 
-		if (_timer % 5 == 0)
+		if (_timer % 10 == 0 && _insertionComplete)
 		{
 			UpdateNearestBuffer();
 		}
@@ -74,7 +71,7 @@ public class FireFlyManager : MonoBehaviour
 
 		if (Input.GetMouseButtonUp(0))
 		{
-			UpdateBuffers();
+			//UpdateBuffers();
 		}
 	}
 
@@ -130,9 +127,25 @@ public class FireFlyManager : MonoBehaviour
 		OnBufferUpdate();
 	}
 
+	private Coroutine insertionCoroutine = null;
+	private bool _insertionComplete = false;
+
+
 	private void UpdateBuffers()
 	{
-		Debug.Log("UPDATING BUFFERS");
+		if (insertionCoroutine != null)
+		{
+			StopCoroutine(insertionCoroutine);
+		}
+		insertionCoroutine = StartCoroutine(InsertFirefliesOverTime());
+	}
+
+	IEnumerator InsertFirefliesOverTime()
+	{
+		int batchSize = 200000; // Number of points to insert per frame
+		int insertionIndex = 0;
+
+		Debug.Log("Starting Insertion");
 
 		FireFlyPositionBuffer?.Release();
 		FireFlyPositionBuffer = new ComputeBuffer(Count, 16); // Assuming each Vector4 takes 16 bytes
@@ -140,22 +153,71 @@ public class FireFlyManager : MonoBehaviour
 
 		fireflyRTree = new RTree(worldBounds); // Reset or rebuild the R-Tree
 
-		for (var i = 0; i < Count; i++)
+		while (insertionIndex < Count)
 		{
-			// Calculate position
-			Vector3 perlinoffset = CalculatePerlinoffset(Count);
-			Vector3 position = FireFlyUtils.RandomPointInSphereWithCurve(Count, Radius, DistributionCurve) + perlinoffset;
+			for (int i = 0; i < batchSize && insertionIndex < Count; i++, insertionIndex++)
+			{
+				// Calculate position
+				Vector3 perlinoffset = CalculatePerlinoffset(Count);
+				Vector3 position = FireFlyUtils.RandomPointInSphereWithCurve(Count, Radius, DistributionCurve) + perlinoffset;
 
-			// Store the position in the buffer
-			positions[i] = new Vector4(position.x, position.y, position.z, 0);
+				// Store the position in the buffer
+				positions[insertionIndex] = new Vector4(position.x, position.y, position.z, 0);
 
-			// Insert into R-Tree directly
-			fireflyRTree.Insert(position);
+				// Insert into R-Tree in batches
+				//fireflyRTree.Insert(position);
+			}
+
+			// Update the compute buffer after each batch
+
+			Debug.Log($"{((float)insertionIndex / Count) * 100f}% Percent Complete");
+
+			// Yield control back to Unity, so it can wait for the next frame
+			yield return null;
 		}
 
+		StartCoroutine(InsertFireFliesIntoRTreeParallelCoroutine(positions));
+
+
+		_insertionComplete = true;
+
+	}
+
+	public IEnumerator InsertFireFliesIntoRTreeParallelCoroutine(Vector4[] positions)
+	{
+		int batchSize = 200000; // Adjust based on your performance needs
+		int totalBatches = Mathf.CeilToInt((float)Count / batchSize);
+
+		object lockObj = new object(); // Lock object for thread safety
+
+		for (int batch = 0; batch < totalBatches; batch++)
+		{
+			// Determine the start and end index for this batch
+			int start = batch * batchSize;
+			int end = Mathf.Min(start + batchSize, Count);
+
+			// Use Parallel.For for parallel insertion within this batch
+			Parallel.For(start, end, i =>
+			{
+				var position = new Vector3(positions[i].x, positions[i].y, positions[i].z);
+
+				// Thread-safe insertion into the R-tree
+				lock (lockObj)
+				{
+					fireflyRTree.Insert(position);
+				}
+			});
+
+			// Optional logging for progress tracking
+			Debug.Log($"{((float)batch / totalBatches) * 100f}% Percent Complete");
+
+			// Yield after processing each batch to avoid freezing the main thread
+			yield return null;
+		}
+
+		Debug.Log("All fireflies inserted into the R-tree in parallel.");
 		FireFlyPositionBuffer.SetData(positions);
 		Shader.SetGlobalBuffer("position_buffer_1", FireFlyPositionBuffer);
-
 		OnBufferUpdate();
 	}
 
