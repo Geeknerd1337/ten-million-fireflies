@@ -51,7 +51,7 @@ public class RTreeNode
 public class RTree
 {
 	private RTreeNode _root;
-	private int _maxPointsPerNode = 8; // Adjust based on your data
+	private int _maxPointsPerNode = 64; // Adjust based on your data
 	private int _maxDepth = 10;
 
 	public RTree(BoundingBox worldBounds)

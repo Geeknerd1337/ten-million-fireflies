@@ -65,7 +65,7 @@ public class FireFlyManager : MonoBehaviour
 
 		if (_timer % 10 == 0 && _insertionComplete)
 		{
-			//UpdateNearestBuffer();
+			UpdateNearestBuffer();
 		}
 
 
@@ -142,7 +142,7 @@ public class FireFlyManager : MonoBehaviour
 
 	IEnumerator InsertFirefliesOverTime()
 	{
-		int batchSize = 200000; // Number of points to insert per frame
+		int batchSize = 100000; // Number of points to insert per frame
 		int insertionIndex = 0;
 
 		Debug.Log("Starting Insertion");
@@ -159,13 +159,13 @@ public class FireFlyManager : MonoBehaviour
 			{
 				// Calculate position
 				Vector3 perlinoffset = CalculatePerlinoffset(Count);
-				Vector3 position = FireFlyUtils.RandomPointInSphereWithCurve(Count, Radius, DistributionCurve) + perlinoffset;
+				Vector3 position = FireFlyUtils.RandomPointInSphereWithCurve(Count, Radius, DistributionCurve);
 
 				// Store the position in the buffer
 				positions[insertionIndex] = new Vector4(position.x, position.y, position.z, 0);
 
 				// Insert into R-Tree in batches
-				//fireflyRTree.Insert(position);
+				fireflyRTree.Insert(position);
 			}
 
 			// Update the compute buffer after each batch
@@ -178,7 +178,7 @@ public class FireFlyManager : MonoBehaviour
 
 		FireFlyPositionBuffer.SetData(positions);
 		Shader.SetGlobalBuffer("position_buffer_1", FireFlyPositionBuffer);
-
+		OnBufferUpdate();
 		_insertionComplete = true;
 
 	}
@@ -217,7 +217,7 @@ public class FireFlyManager : MonoBehaviour
 
 		Debug.Log("All fireflies inserted into the R-tree in parallel.");
 
-		OnBufferUpdate();
+
 	}
 
 	public List<Vector3> GetFirefliesWithinRadius(Vector3 center, float radius)
