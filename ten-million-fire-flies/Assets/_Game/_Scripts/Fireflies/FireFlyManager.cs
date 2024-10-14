@@ -65,7 +65,7 @@ public class FireFlyManager : MonoBehaviour
 
 		if (_timer % 10 == 0 && _insertionComplete)
 		{
-			UpdateNearestBuffer();
+			//UpdateNearestBuffer();
 		}
 
 
@@ -176,8 +176,8 @@ public class FireFlyManager : MonoBehaviour
 			yield return null;
 		}
 
-		StartCoroutine(InsertFireFliesIntoRTreeParallelCoroutine(positions));
-
+		FireFlyPositionBuffer.SetData(positions);
+		Shader.SetGlobalBuffer("position_buffer_1", FireFlyPositionBuffer);
 
 		_insertionComplete = true;
 
@@ -216,8 +216,7 @@ public class FireFlyManager : MonoBehaviour
 		}
 
 		Debug.Log("All fireflies inserted into the R-tree in parallel.");
-		FireFlyPositionBuffer.SetData(positions);
-		Shader.SetGlobalBuffer("position_buffer_1", FireFlyPositionBuffer);
+
 		OnBufferUpdate();
 	}
 
